@@ -48,8 +48,8 @@ def count_in_rmm_phase(rmm):
 def resample_phase_to_subphase(data):
     
     enhanced = data.sel(phase = ['4','5','6']).sum(dim = 'phase')
-    suppressed = data.sel(phase = ['1','2','3']).sum(dim = 'phase')
-    trans = data.sel(phase = ['4','8']).sum(dim = 'phase')
+    suppressed = data.sel(phase = ['1','2','8']).sum(dim = 'phase')
+    trans = data.sel(phase = ['3','7']).sum(dim = 'phase')
     inact = data.sel(phase = 'inactive').drop('phase')
     
     return xr.concat([enhanced,suppressed, trans, inact], 

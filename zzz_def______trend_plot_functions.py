@@ -1,35 +1,4 @@
-import xarray as xr
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-import dask.array
-import cartopy.crs as ccrs
-import matplotlib.colors as colors
-import datetime as dt
-from matplotlib.colors import BoundaryNorm
-import sys
-import warnings
-warnings.filterwarnings('ignore')
-import matplotlib.gridspec as gridspec
-sys.path.append('/home/563/ab2313/MJO/functions')
-import subphase_calc_functions as subphase_calc
-import mystats
-
-
-
-def trend_plots(data, stip = 0,
-                        titlepiece = '', datasource = 'AWAP', colorbar_title = '', 
-                        vmax = 40, savedir = ''):
-            
-    '''~~~~~~~~~~~~~~~~~
-    Dummy file to correct the error with colorf'''
-    import matplotlib.colors as mpc
-    vmin = -vmax
-
-
-    '''~~~~~~~~~~~~~~~~~'''
-    fig  = plt.figure(figsize = (6, 12))
-    gs = gridspec.GridSpec(5,1, hspace = 0.5, wspace = 0, height_ratios = [0.2,1, 1,1,1])
+################################### General Functions################################### General Functions################################### General Functionsspace = 0, height_ratios = [0.2,1, 1,1,1])
     title = f'Trend in {titlepiece} for Phases of the MJO in {datasource}'
     fig.suptitle(title, fontsize = 20, y = 0.95)
 

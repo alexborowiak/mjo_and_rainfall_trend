@@ -87,13 +87,13 @@ def trend_plots(data, stip_data = '',
 
             sig = sub_sig.where(~np.isfinite(sub_sig), 1)
             size = np.nan_to_num(sig.values, 0)
-            size[::2] = 0
+#             size[::2] = 0
+# #             size[::5] = 0
+#             size = np.transpose(size)
+#             size[::2] = 0
 #             size[::5] = 0
-            size = np.transpose(size)
-            size[::2] = 0
-#             size[::5] = 0
-            size = np.transpose(size)
-            ax.scatter(X,Y, s = size * sig_size, color = 'k', alpha = 1)
+#             size = np.transpose(size)
+            ax.scatter(X,Y, s = size * sig_size, color = 'grey', alpha = 0.5)
             
             
 
@@ -201,13 +201,13 @@ def trend_plot_combined(data, stip_data = '',
 
                 sig = sub_sig.where(~np.isfinite(sub_sig), 1)
                 size = np.nan_to_num(sig.values, 0)
-                size[::2] = 0
-    #             size[::5] = 0
-                size = np.transpose(size)
-                size[::2] = 0
-    #             size[::5] = 0
-                size = np.transpose(size)
-                ax.scatter(X,Y, s = size * sig_size, color = 'k', alpha = 1)
+#                 size[::2] = 0
+#     #             size[::5] = 0
+#                 size = np.transpose(size)
+#                 size[::2] = 0
+#     #             size[::5] = 0
+#                 size = np.transpose(size)
+                ax.scatter(X,Y, s = size * sig_size, color = 'k', alpha = 0.5)
             
             # ax.outline_patch.set_visible(False)#Removing the spines of the plot. Cartopy requires different method
 
@@ -223,7 +223,7 @@ def trend_plot_combined(data, stip_data = '',
 
             # This is the square where the rainfall trend is occuring
             ax.add_patch(patch.Rectangle((113.8,-23),21.2,10.8, fill = False, linestyle = '--', linewidth = 1, 
-                                        color = 'grey', alpha  = 0.8))  
+                                        color = 'k', alpha  = 0.8))  
            
 
 
