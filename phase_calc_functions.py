@@ -139,14 +139,14 @@ def count_in_rmm_phase(rmm):
     single_phase.append(number_per_year_inact.values)
 
     titles = np.append(np.array([str(phase) for phase in phases]),['inactive'])
+   
 
     datafile_RMM_split = xr.Dataset({'number':(('phase','year'), single_phase)},
                                    {'phase':titles,
                                     'year': number_per_year.time.dt.year.values
                                    })
     
-    
-#     datafile_RMM_split = xr.concat(single_phase, pd.Index(titles, name = 'phase'))
+   
     
     return datafile_RMM_split
 
