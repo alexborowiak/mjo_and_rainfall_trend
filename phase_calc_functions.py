@@ -32,7 +32,7 @@ def wet_season_year(data):
     # This is the start of the wet_season, wet want to move it to the next year so that the start of the
     # wet season and the end are both in the one year. This makes it easier for calculatins later on 
     
-    data_start = data.where(data.time.dt.month.isin([10,11,12]), drop = True) # The later months of the year
+    data_start = data.where(data.time.dt.month.isin([12]), drop = True) # The later months of the year
     data_start['time'] = data_start.time + pd.to_timedelta('365day') # moving them forward a year
     
     data_end = data.where(data.time.dt.month.isin([1,2,3]), drop = True) # The end half
@@ -82,7 +82,7 @@ def resample_phase_to_subphase(data):
     inact = data.sel(phase = 'inactive').drop('phase')
     
     return xr.concat([enhanced,suppressed, trans, inact], 
-                     pd.Index(['enhanced','suppressed','transition','inacitve'], name = 'phase'))
+                     pd.Index(['enhanced','suppressed','transition','inactive'], name = 'phase'))
 
 
 
@@ -114,9 +114,7 @@ def resample_phase_to_subphase(data):
 '''Counts the number of days in each of the MJO phases for each wet-season. This is useful for 
 normalising all of the count trends'''
 def count_in_rmm_phase(rmm):
-    
-    print(len(np.unique(rmm.time.dt.year.values)))
-    print('---')
+
     rmm_act = rmm.where(rmm.amplitude > 1, drop = True)
     
     phases = np.arange(1,9)
@@ -124,7 +122,7 @@ def count_in_rmm_phase(rmm):
     for phase in phases:
 
          # Just the data for this single rmm phase
-        rmm_single_phase = rmm_act.where(rmm_act.phase == phase, drop = True)
+        rmm_single_phase = rmm_act.where(rmm_act.phase == phase)
          # Resmapling via year, to get the number of days in each phase
         number_per_year = rmm_single_phase.phase.resample(time = 'y').count(dim = 'time')
         # Appending
@@ -140,7 +138,6 @@ def count_in_rmm_phase(rmm):
 
     titles = np.append(np.array([str(phase) for phase in phases]),['inactive'])
    
-
     datafile_RMM_split = xr.Dataset({'number':(('phase','year'), single_phase)},
                                    {'phase':titles,
                                     'year': number_per_year.time.dt.year.values
@@ -227,10 +224,6 @@ def count_in_rmm_subphase(rmm):
 ############################ Rainfall Trends
 ############################ Rainfall Trends
 
-
-
-
-
 import mystats
 
 # Calculates the trend for each individaul grid cell
@@ -244,10 +237,8 @@ def grid_trend(x,t):
     grad = np.polyfit(t[idx],x[idx],1)[0]
     return grad
 
-
 def calculate_trend(percentile):
     
-  
     # The axis number that year is
     axis_num = percentile.get_axis_num('year')
     
@@ -256,63 +247,76 @@ def calculate_trend(percentile):
                                                 t = percentile.year.values)
 
     '''Turning into an xarray dataset'''
-    trend  = xr.Dataset(
-        {'trend':(('phase','lat','lon'), percenilte_trend_meta)},
+    # Added in logic so that now data with or without phase vlaues 
+    # can be passed in. This works by creating dict with lat and lon.
+    
+    # List of the coordinates from the array itself
+    coord_list = ['lat','lon']
+    
+    # The values to be used for each coordinates.
+    coord_dict = {'lat':percentile.lat,'lon':percentile.lon}
+      
+    # If phase is also in the coord_list then we have to add this to the coord dict.
+    # The reorder so that pahse is the first element in the dict.
+    if 'phase' in coord_list:
+        coord_dict['phase'] = percentile.phase.values
+        coord_dict = {k:coord_dict[k] for k in ['phase','lat','lon']}
+        # Adding phase too first element of coord list. 
+        coord_list = ['phase'] + coord_list
 
-        {
-        'phase':percentile.phase.values, 
-         'lat':percentile.lat,
-        'lon':percentile.lon}
-    )
-    
-    
-    
+    trend  = xr.Dataset({'trend':(coord_list, percenilte_trend_meta)},
+                        coord_dict)
     return trend
-
-
-
-
-
 
 def convert_to_percent_per_decade(percentile, trend):
     
     mean_gridcell = percentile.mean(dim = 'year')
     
-    
     return (trend * 10 / mean_gridcell) * 100
-
-
-
-
 
 def calculate_pvals(percentile, trend):
     year_num = percentile.get_axis_num('year')
     
     trend_pval_meta = np.apply_along_axis(mystats.mann_kendall, year_num, percentile)
 
-
-    pvals  = xr.Dataset(
-        {'pvals':(('phase','lat','lon'), trend_pval_meta)},
-
-        {
-        'phase':percentile.phase.values, 
-         'lat':percentile.lat,
-        'lon':percentile.lon}
-    )
+    '''Turning into an xarray dataset'''
+    # Added in logic so that now data with or without phase vlaues 
+    # can be passed in. This works by creating dict with lat and lon.
     
+    # List of the coordinates from the array itself
+    coord_list = ['lat','lon']
+    
+    # The values to be used for each coordinates.
+    coord_dict = {'lat':percentile.lat,'lon':percentile.lon}
+      
+    # If phase is also in the coord_list then we have to add this to the coord dict.
+    # The reorder so that pahse is the first element in the dict.
+    if 'phase' in coord_list:
+        coord_dict['phase'] = percentile.phase.values
+        coord_dict = {k:coord_dict[k] for k in ['phase','lat','lon']}
+        # Adding phase too first element of coord list.     
+        coord_list = ['phase'] + coord_list
+
+    pvals  = xr.Dataset({'pvals':(coord_list, trend_pval_meta)},
+                        coord_dict)
+    
+    
+#     pvals  = xr.Dataset(
+#         {'pvals':(('phase','lat','lon'), trend_pval_meta)},
+
+#         {
+#         'phase':percentile.phase.values, 
+#          'lat':percentile.lat,
+#         'lon':percentile.lon}
+#     
     
     return pvals
-
-
-
 
 def significant_trend_cacl(data, pvals):
     sig = data.where(np.logical_and(pvals.pvals >= 0 ,pvals.pvals <= 0.05  ))
     
 
     return sig
-
-
 
 def return_alltrendinfo_custom(data, normalise = 0):
     import load_dataset as load
@@ -324,28 +328,29 @@ def return_alltrendinfo_custom(data, normalise = 0):
         phase_count = count_in_rmm_phase(rmm)
         data = (data/phase_count.number)
         
-    
     elif normalise == 'subphase':
         rmm = load.load_rmm()
         rmm = wet_season_year(rmm)
-        subphase_count = count_in_rmm_subphase(rmm) 
+        subphase_count = count_in_rmm_subphase(rmm)
+
         data = (data/subphase_count.number)
-    
+
     print('calculating trend', end = '')
     # Calculates the trend
     trend = calculate_trend(data)
     print(': complete')
     
-    
+
     # Convertes to percent per decade
     print('converting to percent per decade', end = '')
     trend_percent = convert_to_percent_per_decade(data, trend)
     print(': complete')
-    
+
     # Calculates the significant values
     print('finding significant points', end = '')
     pvals =  calculate_pvals(data, trend)
     print(': complete')
+
     print('getting just significant trend points', end = '')
     trend_sig = significant_trend_cacl(trend, pvals)
     trend_percent_sig = significant_trend_cacl(trend_percent, pvals)

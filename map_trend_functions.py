@@ -16,6 +16,8 @@ best_blue = '#9bc2d5'
 recherche_red = '#fbc4aa'
 import matplotlib.patches as patch
 
+import load_dataset as load
+
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -144,7 +146,7 @@ def trend_plots(data, stip_data = '',
         
         
 def trend_plot_combined(data, stip_data = '',
-                        vmax = 40, step = 10, sig_size = 2.5,
+                        vmax = 40, step = 10, sig_size = 1,
                         title = '', colorbar_title = '', 
                         savedir = ''):
             
@@ -160,8 +162,8 @@ def trend_plot_combined(data, stip_data = '',
     num_cols = 2 # Two columns for the different indices that are being used.
     
     fig  = plt.figure(figsize = (3 * 10, num_rows * 20/3)) #20/3 is the height adjust factor b/w subphase and phase
-    gs = gridspec.GridSpec(num_rows + 1,num_cols, hspace = 0.08, wspace = 0.1, height_ratios = [0.2] + num_rows * [1])
-    fig.suptitle(title, fontsize = 35, y = 0.99)
+    gs = gridspec.GridSpec(num_rows + 1,num_cols, hspace = 0.12, wspace = 0.1, height_ratios = [0.2] + num_rows * [1])
+#     fig.suptitle(title, fontsize = 35, y = 0.99)
 
 
     '''~~~~~~~~~~~~~~~~~ Creating a custom colorbar'''   
@@ -180,6 +182,13 @@ def trend_plot_combined(data, stip_data = '',
     '''~~~~~~~~~~~~~~~~~ Plotting Values'''   
     
     phases = data.phase.values
+    X,Y = np.meshgrid(data.lon, data.lat)
+    
+    # Loading in mask to be used in plot.
+    mask = load.load_mask()
+    md = mask.sel(lat = slice(-23, -16), lon = slice(122,135)).where(mask == 0).mask
+    hatchX,hatchY = np.meshgrid(md.lon.values, md.lat.values)
+    
     
     # Looping through all fo the indices.
     for column, index in enumerate(data):
@@ -191,7 +200,10 @@ def trend_plot_combined(data, stip_data = '',
             # Row is + 1 as the color bar is going to be on the first row.
             ax = fig.add_subplot(gs[row + 1, column], projection  = ccrs.PlateCarree())
 
-            plot = data_phase.plot(ax = ax, cmap = cmap, levels = levels, add_colorbar = False)
+
+            # Plotting  the data with cmap and levels.
+            plot = ax.contourf(X,Y, data_phase, cmap = cmap, levels = levels)
+#             plot = data_phase.plot(ax = ax, cmap = cmap, levels = levels, add_colorbar = False)
             
             # If stip data is an array (stip_data is a string unless specific)
             if type(stip_data) != str:
@@ -201,29 +213,38 @@ def trend_plot_combined(data, stip_data = '',
 
                 sig = sub_sig.where(~np.isfinite(sub_sig), 1)
                 size = np.nan_to_num(sig.values, 0)
-#                 size[::2] = 0
-#     #             size[::5] = 0
-#                 size = np.transpose(size)
-#                 size[::2] = 0
-#     #             size[::5] = 0
-#                 size = np.transpose(size)
-                ax.scatter(X,Y, s = size * sig_size, color = 'k', alpha = 0.5)
+                ax.scatter(X,Y, s = size * sig_size, color = 'k', alpha = 0.4)
             
             # ax.outline_patch.set_visible(False)#Removing the spines of the plot. Cartopy requires different method
 
             # Adding in ticks for different lats and lons
             ax.coastlines(resolution = '50m')
-            ax.set_title(str(phase).capitalize(), size = 25)
+            
             ax.set_xticks([120,130,140,150] , crs = ccrs.PlateCarree())
             ax.set_xticklabels(['120E','130E','140E','150E'], size = 18)
             ax.set_xlabel('')
             ax.set_yticks([-12, -16,-20] , crs = ccrs.PlateCarree())
             ax.set_yticklabels(['12S','16S','20S'], size = 18)
             ax.set_ylabel('')
+            ax.set_extent([112,153, -22,-10])
 
-            # This is the square where the rainfall trend is occuring
+            # This is the square where the rainfall trend is occuring.
+            # (x,y), width, hieght
             ax.add_patch(patch.Rectangle((113.8,-23),21.2,10.8, fill = False, linestyle = '--', linewidth = 1, 
-                                        color = 'k', alpha  = 0.8))  
+                                    color = 'k', alpha  = 1)) 
+            
+            # Hatching out the region in plot.
+            ax.pcolor(hatchX,hatchY, md,hatch = '//', alpha = 0)
+            
+            
+            if column == 0:
+                ax.set_ylabel(str(phase).capitalize(), size = 25, labelpad = 10)
+                
+            if column == 0 and row == 0:
+                ax.set_title('Number of Raindays', size = 25)
+            if column == 1 and row == 0:
+                ax.set_title('Total Rainfall (mm)', size = 25)
+
            
 
 

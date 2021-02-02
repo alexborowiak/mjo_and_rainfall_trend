@@ -23,6 +23,18 @@ import matplotlib.gridspec as gridspec
 '''~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'''
 
 
+def load_mask():
+    # the andrew mask for the gibson desert
+    directory  = '/g/data/w40/ab2313/'
+    path = directory  + 'precip_calib_0.25_maskforCAus.nc'
+    mask = xr.open_dataset(path)
+    mask = mask.rename({'longitude':'lon'})
+    mask = mask.rename({'latitude':'lat'})
+    
+    return mask
+
+
+
 
 def load_awap():
     directory  = '/g/data/w40/ab2313/'

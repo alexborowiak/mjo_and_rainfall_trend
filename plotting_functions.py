@@ -13,7 +13,7 @@ import matplotlib.gridspec as gridspec
 import matplotlib.patches as patch
 import matplotlib.colors as mpc
 import miscellaneous as misc
-
+import load_dataset as load
 
 import sys
 sys.path.append('../functions/')
@@ -103,8 +103,7 @@ def map_plot_with_stippling_and_NWASquare(data, ax, cmap, levels, square = 0, st
         # stip_reduce: reduces the amount of stippling.
         # sig_size: the size of significant points.
         # sig_alpha: the alpha value of significant points. 
-        
-        
+
         # CODE
         # Creating a grid using the lat and lon points.
         data = apply_masks(data)
@@ -121,8 +120,14 @@ def map_plot_with_stippling_and_NWASquare(data, ax, cmap, levels, square = 0, st
         # This patch marks the square where the raifnall trend occurs
         if square:
             ax.add_patch(patch.Rectangle((113.8,-23),21.2,10.8, fill = False, linestyle = '--', linewidth = 1, 
-                                    color = 'grey', alpha  = 0.8))  
-#             ax.add_patch(patch.Rectangle((113.8,-23),21.2,10.8, fill = False, linestyle = '--', linewidth = 1.5))
+                                    color = 'k', alpha  = 1)) 
+            
+        # Hatching out the region in plot.
+        # Loading in mask to be used in plot.
+        mask = load.load_mask()
+        md = mask.sel(lat = slice(-23, -16), lon = slice(122,135)).where(mask == 0).mask
+        hatchX,hatchY = np.meshgrid(md.lon.values, md.lat.values)
+        ax.pcolor(hatchX,hatchY, md,hatch = '//', alpha = 0)
         
         # Plotting stippling to indicate where the significant data occurs. 
         if type(stip_data) != str:
@@ -156,27 +161,28 @@ def map_plot_with_stippling_and_NWASquare(data, ax, cmap, levels, square = 0, st
         # Plot is return for the colorbar.
         return plot
     
-    
-    
-    
-def create_colorbar(plot, cax, levels, cbar_title = '', cbar_titleSize = 12, xtickSize = 12, rotation = 45,
+
+def create_colorbar(plot, cax, levels, ticks = '', cbar_title = '', cbar_titleSize = 12, xtickSize = 12, rotation = 45,
                    orientation = 'horizontal'):
     # DESCRIPTIN
     # plot: the plot that th cbar is refering to.
     # caxes: the colorbar axes.
     # levels: the levels on the plot
-    mpl.rcParams['text.usetex'] = False
+#     mpl.rcParams['text.usetex'] = False
     # CODE
-    cbar = plt.colorbar(plot, cax = cax, orientation = orientation )#,norm = norm)
+    cbar = plt.colorbar(plot, cax = cax, orientation = orientation )#,norm = norm
+    cbar.set_ticks(levels)
 
-    
-    ticks = levels
-    cbar.set_ticks(ticks)
-    tick_labels = levels
-    if orientation == 'horizontal':
-        cbar.ax.set_xticklabels(np.round(tick_labels,2), fontsize = xtickSize, rotation = rotation)
-        cbar.ax.set_title(cbar_title, size = cbar_titleSize);
+    # Tick label control
+    if type(ticks) == str(): # No custom ticks entered. Ticks are rounded level
+        tick_labels = np.round(levels,2)
+    else: # we do have custom ticks
+        tick_labels = ticks
         
+    # Orientation control
+    if orientation == 'horizontal':
+        cbar.ax.set_xticklabels(tick_labels, fontsize = xtickSize, rotation = rotation)
+        cbar.ax.set_title(cbar_title, size = cbar_titleSize);
     else:
-        cbar.ax.set_yticklabels(np.round(tick_labels,2), fontsize = xtickSize, rotation = rotation)
+        cbar.ax.set_yticklabels(tick_labels, fontsize = xtickSize, rotation = rotation)
         cbar.ax.set_ylabel(cbar_title, size = cbar_titleSize)
