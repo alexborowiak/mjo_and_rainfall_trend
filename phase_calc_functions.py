@@ -243,7 +243,7 @@ def calculate_trend(percentile):
     axis_num = percentile.get_axis_num('year')
     
     '''Applying trends along each grid cell'''
-    percenilte_trend_meta = np.apply_along_axis(grid_trend,axis_num, percentile.values, 
+    percentile_trend_meta = np.apply_along_axis(grid_trend,axis_num, percentile.values, 
                                                 t = percentile.year.values)
 
     '''Turning into an xarray dataset'''
@@ -258,13 +258,17 @@ def calculate_trend(percentile):
       
     # If phase is also in the coord_list then we have to add this to the coord dict.
     # The reorder so that pahse is the first element in the dict.
-    if 'phase' in coord_list:
+    print(list(percentile))
+    if 'phase' in list(percentile.coords):
         coord_dict['phase'] = percentile.phase.values
         coord_dict = {k:coord_dict[k] for k in ['phase','lat','lon']}
         # Adding phase too first element of coord list. 
         coord_list = ['phase'] + coord_list
-
-    trend  = xr.Dataset({'trend':(coord_list, percenilte_trend_meta)},
+    
+    print('\n')
+    print(coord_list)#, percentile_trend_meta.values.shape, coord_dict, sep = '\n')
+    
+    trend  = xr.Dataset({'trend':(coord_list, percentile_trend_meta)},
                         coord_dict)
     return trend
 
@@ -291,29 +295,19 @@ def calculate_pvals(percentile, trend):
       
     # If phase is also in the coord_list then we have to add this to the coord dict.
     # The reorder so that pahse is the first element in the dict.
-    if 'phase' in coord_list:
+    if 'phase' in list(percentile.coords):
         coord_dict['phase'] = percentile.phase.values
         coord_dict = {k:coord_dict[k] for k in ['phase','lat','lon']}
         # Adding phase too first element of coord list.     
         coord_list = ['phase'] + coord_list
 
     pvals  = xr.Dataset({'pvals':(coord_list, trend_pval_meta)},
-                        coord_dict)
-    
-    
-#     pvals  = xr.Dataset(
-#         {'pvals':(('phase','lat','lon'), trend_pval_meta)},
-
-#         {
-#         'phase':percentile.phase.values, 
-#          'lat':percentile.lat,
-#         'lon':percentile.lon}
-#     
+                        coord_dict) 
     
     return pvals
 
-def significant_trend_cacl(data, pvals):
-    sig = data.where(np.logical_and(pvals.pvals >= 0 ,pvals.pvals <= 0.05  ))
+def significant_trend_calc(data, pvals):
+    sig = data.where(np.logical_and(pvals.pvals >= 0 ,pvals.pvals <= 0.15))
     
 
     return sig
@@ -352,8 +346,8 @@ def return_alltrendinfo_custom(data, normalise = 0):
     print(': complete')
 
     print('getting just significant trend points', end = '')
-    trend_sig = significant_trend_cacl(trend, pvals)
-    trend_percent_sig = significant_trend_cacl(trend_percent, pvals)
+    trend_sig = significant_trend_calc(trend, pvals)
+    trend_percent_sig = significant_trend_calc(trend_percent, pvals)
     print(': complete')
 
     return trend, trend_sig, trend_percent, trend_percent_sig

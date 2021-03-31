@@ -36,10 +36,11 @@ def fig_formatter(height_ratios , width_ratios,  hspace = 0.4, wspace = 0.2):
 
 
 
-def colorbar_creater(vmax, step, cmap = plt.cm.RdBu, add_white = 0, extender = 0):
+def colorbar_creater(vmax, step, cmap = 'RdBu', vmin = '', add_white = 0, extender = 0):
     
-    
-    vmin = -vmax
+    # If no vmin value is enetered
+    if type(vmin) == str:
+        vmin = -vmax
         
     # These are the different bound
     levels = np.arange(vmin, vmax + step, step)
@@ -48,9 +49,12 @@ def colorbar_creater(vmax, step, cmap = plt.cm.RdBu, add_white = 0, extender = 0
     # This is doen be extending the cmap further on either side, then clipping the ends off
      # This is the extra amount of discrete colors to make
         # List  of all the colors
-    custom_cmap = plt.cm.get_cmap('RdBu', len(levels) + extender)(np.arange(len(levels) + extender)) 
+    custom_cmap = plt.cm.get_cmap(cmap, len(levels) + extender)(np.arange(len(levels) + extender)) 
     if extender: # Chopping of some colors that are to dark to see the stippling
         custom_cmap = custom_cmap[extender:-extender] # CLipping the ends of either side
+#         custom_cmap = custom_cmap[0:-extender]
+        
+#         custom_cmap[0] = [1,1,1,1] # first element is white
     
     # This will add a white section to the middle of the color bar. This is useful is small values 
     # need not be shown.
@@ -70,6 +74,7 @@ def colorbar_creater(vmax, step, cmap = plt.cm.RdBu, add_white = 0, extender = 0
         
         # This must also be set to white. Not quite sure of the reasoning behind this. 
         custom_cmap[int(lower_mid) - 1] = white
+     
         
     
     # Joing back together as a colormap.
@@ -90,7 +95,7 @@ def lat_lon_grid(ax):
         ax.set_ylabel('')
 
 def map_plot_with_stippling_and_NWASquare(data, ax, cmap, levels, square = 0, stip_data = '', stip_reduce = 0, 
-                            sig_size = 1, sig_alpha = 0.5, lat_lon = 1,
+                            sig_size = 1, sig_alpha = 0.5, lat_lon = 1, ptype = '',
                            title = ''):
         
         # DESCRIPTION
@@ -105,14 +110,22 @@ def map_plot_with_stippling_and_NWASquare(data, ax, cmap, levels, square = 0, st
         # sig_alpha: the alpha value of significant points. 
 
         # CODE
+        
+        if type(ptype) == str:
+            ptype = ax.contourf
+        
+        
         # Creating a grid using the lat and lon points.
         data = apply_masks(data)
         
         X,Y = np.meshgrid(data.lon, data.lat)
         # Plotting  the data with cmap and levels.
-        plot = ax.contourf(X,Y, data, cmap = cmap, levels = levels)
+        plot = ptype(X,Y, data, cmap = cmap, levels = levels)
         ax.set_title(title, fontsize = 20, pad = 5)
         ax.set_extent([112,153, -22,-10])
+        
+        
+
         
         if lat_lon:
             lat_lon_grid(ax)
@@ -161,6 +174,55 @@ def map_plot_with_stippling_and_NWASquare(data, ax, cmap, levels, square = 0, st
         # Plot is return for the colorbar.
         return plot
     
+    
+def map_plot_with_no_controurf_NWASquare(data, ax, cmap, levels, square = 0,
+                            lat_lon = 1, ptype = '',
+                           title = ''):
+        
+        
+        # DESCRIPTION
+        # data: Xarray data array with lat and lon coords only.
+        # ax: the axis to be plotted on.
+        # the colormap to be used.
+        # square: this will add a square in the region where there is the trend in the north-west
+        #         of Australia.
+        # stip_data: data set for stippling showing significance. Same format as data.
+        # stip_reduce: reduces the amount of stippling.
+        # sig_size: the size of significant points.
+        # sig_alpha: the alpha value of significant points. 
+
+        # CODE
+        # Creating a grid using the lat and lon points.
+        data = apply_masks(data)
+        
+
+        plot = data.plot(ax = ax, cmap = cmap, levels = levels, add_colorbar = False)
+
+        ax.set_title(title, fontsize = 20, pad = 5)
+        ax.set_extent([112,153, -22,-10])
+        
+        if lat_lon:
+            lat_lon_grid(ax)
+    
+        # This patch marks the square where the raifnall trend occurs
+        if square:
+            ax.add_patch(patch.Rectangle((113.8,-23),21.2,10.8, fill = False, linestyle = '--', linewidth = 1, 
+                                    color = 'k', alpha  = 1)) 
+            
+        # Hatching out the region in plot.
+        # Loading in mask to be used in plot.
+        mask = load.load_mask()
+        md = mask.sel(lat = slice(-23, -16), lon = slice(122,135)).where(mask == 0).mask
+        hatchX,hatchY = np.meshgrid(md.lon.values, md.lat.values)
+        ax.pcolor(hatchX,hatchY, md,hatch = '//', alpha = 0)
+   
+
+        # Removing the spines of the plot. Cartopy requires different method
+#         ax.outline_patch.set_visible(False)
+        ax.coastlines(resolution = '50m')
+        
+        # Plot is return for the colorbar.
+        return plot
 
 def create_colorbar(plot, cax, levels, ticks = '', cbar_title = '', cbar_titleSize = 12, xtickSize = 12, rotation = 45,
                    orientation = 'horizontal'):
