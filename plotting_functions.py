@@ -117,6 +117,7 @@ def map_plot_with_stippling_and_NWASquare(data, ax, cmap, levels, square = 0, st
         
         # Creating a grid using the lat and lon points.
         data = apply_masks(data)
+        stip_data = apply_masks(stip_data)
         
         X,Y = np.meshgrid(data.lon, data.lat)
         # Plotting  the data with cmap and levels.
@@ -140,7 +141,7 @@ def map_plot_with_stippling_and_NWASquare(data, ax, cmap, levels, square = 0, st
         mask = load.load_mask()
         md = mask.sel(lat = slice(-23, -16), lon = slice(122,135)).where(mask == 0).mask
         hatchX,hatchY = np.meshgrid(md.lon.values, md.lat.values)
-        ax.pcolor(hatchX,hatchY, md,hatch = '//', alpha = 0)
+        ax.pcolor(hatchX,hatchY, md,hatch = 'X', alpha = 0)
         
         # Plotting stippling to indicate where the significant data occurs. 
         if type(stip_data) != str:
@@ -225,7 +226,7 @@ def map_plot_with_no_controurf_NWASquare(data, ax, cmap, levels, square = 0,
         return plot
 
 def create_colorbar(plot, cax, levels, ticks = '', cbar_title = '', cbar_titleSize = 12, xtickSize = 12, rotation = 45,
-                   orientation = 'horizontal'):
+                   orientation = 'horizontal', cut_ticks = 1):
     # DESCRIPTIN
     # plot: the plot that th cbar is refering to.
     # caxes: the colorbar axes.
@@ -233,7 +234,7 @@ def create_colorbar(plot, cax, levels, ticks = '', cbar_title = '', cbar_titleSi
 #     mpl.rcParams['text.usetex'] = False
     # CODE
     cbar = plt.colorbar(plot, cax = cax, orientation = orientation )#,norm = norm
-    cbar.set_ticks(levels)
+    cbar.set_ticks(levels[::cut_ticks])
 
     # Tick label control
     if type(ticks) == str(): # No custom ticks entered. Ticks are rounded level

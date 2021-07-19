@@ -36,7 +36,7 @@ def load_mask():
 
 
 
-def load_awap():
+def load_awap_old():
     directory  = '/g/data/w40/ab2313/'
     path = directory + 'precip_calib_0.25_1911_2017_land.nc'
     AWAP = xr.open_dataset(path)
@@ -66,6 +66,34 @@ def load_awap():
     
     return AWAP
 
+def load_awap():
+    directory  = '/g/data/w40/ab2313/'
+    awap_path = directory + 'awap_n4.nc'
+    AWAP = xr.open_dataset(awap_path)
+    
+    # Applying the land sea mask
+    path = directory  + 'precip_calib_0.25_maskforCAus.nc'
+    mask = xr.open_dataset(path)
+    mask = mask.rename({'longitude':'lon'})
+    mask = mask.rename({'latitude':'lat'})
+
+    AWAP = AWAP.where(mask.mask == 1)
+
+    
+
+    #Rainday > 1mm
+    AWAP = AWAP.where(AWAP.precip >= 1, drop = True) 
+     # This are unphysical
+    AWAP = AWAP.where(AWAP.precip < 8000, drop = True)
+    
+    # Rainday starets at 9am, we want day to be a day
+    AWAP['time'] = AWAP.time.values - pd.to_timedelta('9h')
+    
+    AWAP.attrs = {'Information':'Only contains the wet season [10,11,12,1,2,3],'
+               + 'rainfall >= 1mm and the North of Australia',
+                 'History': 'AGCD Regrid on the 11th of June 2021 from /g/data/rr5 by ab2313'}
+    
+    return AWAP
 
 
 
@@ -76,7 +104,8 @@ def load_rmm():
     import io
 
     url = 'http://www.bom.gov.au/climate/mjo/graphics/rmm.74toRealtime.txt'
-    user_agent = 'Mozilla/5.0 (X11; Linux x86_64; rv:68.0) Gecko/20100101 Firefox/68.0'
+#     user_agent = 'Mozilla/5.0 (X11; Linux x86_64; rv:68.0) Gecko/20100101 Firefox/68.0'
+    user_agent = 'Mozilla/5.0 (X11; Linux x86_64; rv:78.0) Gecko/20100101 Firefox/78.0'
     headers={'User-Agent':user_agent}
     request=urllib.request.Request(url,None,headers)
     response = urllib.request.urlopen(request)

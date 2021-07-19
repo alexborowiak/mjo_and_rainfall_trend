@@ -258,15 +258,15 @@ def calculate_trend(percentile):
       
     # If phase is also in the coord_list then we have to add this to the coord dict.
     # The reorder so that pahse is the first element in the dict.
-    print(list(percentile))
+#     print(list(percentile))/
     if 'phase' in list(percentile.coords):
         coord_dict['phase'] = percentile.phase.values
         coord_dict = {k:coord_dict[k] for k in ['phase','lat','lon']}
         # Adding phase too first element of coord list. 
         coord_list = ['phase'] + coord_list
     
-    print('\n')
-    print(coord_list)#, percentile_trend_meta.values.shape, coord_dict, sep = '\n')
+#     print('\n')
+#     print(coord_list)#, percentile_trend_meta.values.shape, coord_dict, sep = '\n')
     
     trend  = xr.Dataset({'trend':(coord_list, percentile_trend_meta)},
                         coord_dict)
@@ -307,8 +307,7 @@ def calculate_pvals(percentile, trend):
     return pvals
 
 def significant_trend_calc(data, pvals):
-    sig = data.where(np.logical_and(pvals.pvals >= 0 ,pvals.pvals <= 0.15))
-    
+    sig = data.where(np.logical_and(pvals.pvals >= 0 ,pvals.pvals <= 0.1))
 
     return sig
 
