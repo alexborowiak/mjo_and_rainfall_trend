@@ -402,7 +402,7 @@ def trend_plot_combined(data, stip_data = '',
         fig.savefig(savedir + title + '.png', dpi = 400)
 
 def trend_plot_combined_better(data, stip_data = '',
-                        vmax = 40, step = 10, sig_size = 1,
+                        vmax = 40, step = 10, sig_size = 1, stiple_reduction=None,
                         title = '', colorbar_title = '', col_titles = ['Number of Raindays', 'Rainfall'],
                         savedir = '', cmap = plt.cm.RdBu):
             
@@ -416,7 +416,7 @@ def trend_plot_combined_better(data, stip_data = '',
     num_cols = 2 # Two columns for the different indices that are being used.
     
     fig  = plt.figure(figsize = (3 * 10, num_rows * 20/3)) #20/3 is the height adjust factor b/w subphase and phase
-    gs = gridspec.GridSpec(num_rows + 1,num_cols, hspace = 0.15, wspace = 0.1, height_ratios = [0.2] + num_rows * [1])
+    gs = gridspec.GridSpec(num_rows + 1,num_cols, hspace = 0.25, wspace = 0.1, height_ratios = [0.2] + num_rows * [1])
 
 
     vmin = -vmax
@@ -432,73 +432,36 @@ def trend_plot_combined_better(data, stip_data = '',
     
     phases = data.phase.values
 
-              
-    X,Y = np.meshgrid(data.lon, data.lat)
-    
-    # Loading in mask to be used in plot.
-    mask = load.load_mask()
-    md = mask.sel(lat = slice(-23, -16), lon = slice(122,135)).where(mask == 0).mask
-    hatchX,hatchY = np.meshgrid(md.lon.values, md.lat.values)
-    
     # Looping through all fo the indices.
-    for column, index in enumerate(data):
-        data_index  = data[index]
-    
+    for column, index in enumerate(data):    
         for row, phase in enumerate(phases):
 
-            data_phase = data_index.sel(phase = phase)
-            # Row is + 1 as the color bar is going to be on the first row.
+            data_phase = data[index].sel(phase = phase)
             ax = fig.add_subplot(gs[row + 1, column], projection  = ccrs.PlateCarree())
-
-
-            # Plotting  the data with cmap and levels.
-            plot = ax.contourf(X,Y, data_phase, cmap = cmap, levels = levels)
-#             plot = data_phase.plot(ax = ax, cmap = cmap, levels = levels, add_colorbar = False)
+            plot = ax.contourf(data.lon,data.lat, data_phase, cmap = cmap, levels = levels)
             
             # If stip data is an array (stip_data is a string unless specific)
-            if isinstance(stip_data, xr.DataArray): plot_stippled_data(stip_data.sel(phase=phase), ax,
-                                                                   stiple_reduction=stiple_reduction,
-                                                                  sig_size=sig_size)
-#             if type(stip_data) != str:
-#                 sub_sig_index = stip_data[index]
-#                 sub_sig = sub_sig_index.sel(phase = phase)
-#                 sub_sig = sub_sig.where(mask.mask == 1)
-#                 Xs,Ys = np.meshgrid(sub_sig.lon, sub_sig.lat)
-
-#                 sig = sub_sig.where(~np.isfinite(sub_sig), 1)
-#                 size = np.nan_to_num(sig.values, 0)
-#                 ax.scatter(Xs,Ys, s = size * sig_size, color = 'k', alpha = 0.4)
+            if isinstance(stip_data, xr.DataArray) or isinstance(stip_data, xr.Dataset):
+                plot_stippled_data(stip_data[index].sel(phase=phase), ax, 
+                                   stiple_reduction=stiple_reduction,sig_size=sig_size)
 
             format_lat_lon(ax)
-            ax.pcolor(hatchX,hatchY, md,hatch = '//', alpha = 0)
-            
-            
-            if column == 0:
-                ax.set_ylabel(str(phase).capitalize(), size = 25, labelpad = 10)
-                
-            if column == 0 and row == 0:
-                ax.set_title(col_titles[0], size = 25)
-            if column == 1 and row == 0:
-                ax.set_title(col_titles[1], size = 25)
-
-           
+       
+      
+            if column == 0: ax.set_ylabel(str(phase).capitalize(), size = 25, labelpad = 10)    
+            if column == 0 and row == 0: ax.set_title(col_titles[0], size = 25)
+            if column == 1 and row == 0: ax.set_title(col_titles[1], size = 25)
 
 
-    '''~~~~~ Colorbar'''
     axes = plt.subplot(gs[0,:num_cols])
-    # cbar = difference_colorbar_horizontal(axes, plot,vmin, vmax , orientation = 'horizontal')
-    cbar = plt.colorbar(plot, cax=axes, orientation = 'horizontal')#,norm = norm)
+    cbar = plt.colorbar(plot, cax=axes, orientation = 'horizontal')
     cbar.ax.set_title(colorbar_title, size = 25);
     
     ticks = levels
     cbar.set_ticks(ticks)
     tick_labels = np.core.defchararray.add(ticks.astype(int).astype(str), np.tile('%', len(ticks)))
     cbar.ax.set_xticklabels(tick_labels, fontsize = 20)
-#     tick_labels = np.arange(vmin,vmax + 5, 10).astype('str')
-#     tick_labels = np.core.defchararray.add(tick_labels  , np.tile('%',len(tick_labels)));
-#     cbar.ax.set_xticklabels(tick_labels, fontsize = 15);
-    
-    
+ 
     if savedir != '':
         fig.savefig(savedir + title + '.png', dpi = 400)
 
