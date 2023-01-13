@@ -13,6 +13,7 @@ import warnings
 import glob
 warnings.filterwarnings('ignore')
 
+MJO_DIR = '/g/data/w40/ab2313/mjo_and_rainfall_trend/'
 
 
 # This is for removing the points above and below the threshold. This is specifically 
@@ -36,8 +37,8 @@ def remove_outside_point(data, vmax, vmin):
         
         
         return data
-    
-      
+
+
 def upper_low_bound(vmin, vmax):
     
     if vmin == 0:
@@ -56,9 +57,9 @@ def upper_low_bound(vmin, vmax):
     
     
     return lower_bound, upper_bound
-    
 
-    
+
+
 def OrderOfMagnitude(number):
     import math
     mag = math.floor(math.log(number, 10))   
@@ -66,20 +67,20 @@ def OrderOfMagnitude(number):
         return 0.1
     else:
         return mag
-     
-                
+
+
 def apply_masks(data):
     # The land sea maks for era-5
     import xarray as xr
-    directory2 = '/g/data/w40/ab2313/ERA5/'
-    landsea_mask = xr.open_dataset(directory2 + 'mask_landsea.nc')
+    directory = MJO_DIR
+    landsea_mask = xr.open_dataset(directory + 'mask_landsea.nc')
     landsea_mask = landsea_mask.rename({'longitude':'lon', 'latitude':'lat'})
     landsea_mask = landsea_mask.squeeze().drop('time')
     data = data.where(landsea_mask.lsm >= 0.5, drop = True)
     
     
     # the andrew mask for the gibson desert
-    directory  = '/g/data/w40/ab2313/'
+#     directory  = '/g/data/w40/ab2313/'
     path = directory  + 'precip_calib_0.25_maskforCAus.nc'
     mask = xr.open_dataset(path)
     mask = mask.rename({'longitude':'lon'})

@@ -15,22 +15,23 @@ import matplotlib.gridspec as gridspec
 
 
 
-################################### General Functions
-################################### General Functions
-################################### General Functions
-################################### General Functions
-################################### General Functions
-################################### General Functions
-################################### General Functions
+# ################################## General Functions
+# ################################## General Functions
+# ################################## General Functions
+# ################################## General Functions
+# ################################## General Functions
+# ################################## General Functions
+# ################################## General Functions
 
 
 # This function moves the start of the wet season [10, 11, 12] to the next year. This means that
 # this year is just the data for one wet season
 
 def wet_season_year(data):
-    
-    # This is the start of the wet_season, wet want to move it to the next year so that the start of the
-    # wet season and the end are both in the one year. This makes it easier for calculatins later on 
+    '''
+    This is the start of the wet_season, wet want to move it to the next year so that the start of the
+    wet season and the end are both in the one year. This makes it easier for calculatins later on 
+    '''
     
     data_start = data.where(data.time.dt.month.isin([12]), drop = True) # The later months of the year
     data_start['time'] = data_start.time + pd.to_timedelta('365day') # moving them forward a year
@@ -61,7 +62,9 @@ def split_into_1to8(datafile, rmm_xr):
         datafile_single = datafile.where(datafile.time.isin(rmm_single_dates), drop = True) # The datafile data in this phase
         single_phase.append(datafile_single) # Appending
 
-    phases = np.append(phases.astype('str'), 'inactive') # The ianctive also needs to be included
+    phases = np.append(phases.astype('str'), 'inactive')
+    
+    # The inactive phase also needs to be included
     single_phase.append(datafile_inact) 
 
 
@@ -104,12 +107,10 @@ def resample_phase_to_subphase(data):
 
 
 
-############################ MJO Trends
-############################ MJO Trends
-############################ MJO Trends
-############################ MJO Trends
-
-
+# ########################### MJO Trends
+# ########################### MJO Trends
+# ########################### MJO Trends
+# ########################### MJO Trends
 
 '''Counts the number of days in each of the MJO phases for each wet-season. This is useful for 
 normalising all of the count trends'''
@@ -124,7 +125,7 @@ def count_in_rmm_phase(rmm):
          # Just the data for this single rmm phase
         rmm_single_phase = rmm_act.where(rmm_act.phase == phase)
          # Resmapling via year, to get the number of days in each phase
-        number_per_year = rmm_single_phase.phase.resample(time = 'y').count(dim = 'time')
+        number_per_year = rmm_single_phase.phase.resample(time = 'Y').count(dim = 'time')
         # Appending
         single_phase.append(number_per_year.values)
 
@@ -132,15 +133,15 @@ def count_in_rmm_phase(rmm):
 
     '''Inactive Phase'''
     rmm_inact = rmm.where(rmm.amplitude <=1 , drop = True)
-    number_per_year_inact = rmm_inact.phase.resample(time = 'y').count(dim = 'time')
+    number_per_year_inact = rmm_inact.phase.resample(time = 'Y').count(dim = 'time')
 
     single_phase.append(number_per_year_inact.values)
 
     titles = np.append(np.array([str(phase) for phase in phases]),['inactive'])
    
-    datafile_RMM_split = xr.Dataset({'number':(('phase','year'), single_phase)},
+    datafile_RMM_split = xr.Dataset({'number':(('phase','time'), single_phase)},
                                    {'phase':titles,
-                                    'year': number_per_year.time.dt.year.values
+                                    'time': number_per_year.time.values #.dt.year.values
                                    })
     
    
@@ -164,7 +165,7 @@ def count_in_rmm_subphase(rmm):
          # Just the data for this single rmm phase
         rmm_single_phase = rmm_act.where(rmm_act.phase.isin(phase_nums))#, drop = True)
          # Resmapling via year, to get the number of days in each phase
-        number_per_year = rmm_single_phase.phase.resample(time = 'y').count(dim = 'time')
+        number_per_year = rmm_single_phase.phase.resample(time = 'Y').count(dim = 'time')
         # Appending
         single_phase.append(number_per_year.values)
 
@@ -172,57 +173,20 @@ def count_in_rmm_subphase(rmm):
 
     '''Inactive Phase'''
     rmm_inact = rmm.where(rmm.amplitude <=1)# , drop = True)
-    number_per_year_inact = rmm_inact.phase.resample(time = 'y').count(dim = 'time')
+    number_per_year_inact = rmm_inact.phase.resample(time = 'Y').count(dim = 'time')
 
     single_phase.append(number_per_year_inact.values)
 
     titles = np.append(np.array([key for key in phase_dict.keys()]),['inactive'])
 
-    datafile_RMM_split = xr.Dataset({'number':(('phase','year'), single_phase)},
+    datafile_RMM_split = xr.Dataset({'number':(('phase','time'), single_phase)}, #previously year
                                    {'phase':titles,
-                                    'year': number_per_year.time.dt.year.values
+                                    'time': number_per_year.time.values#.dt.year.values
                                    })
-    
-    
 #     datafile_RMM_split = xr.concat(single_phase, pd.Index(titles, name = 'phase'))
-    
     return datafile_RMM_split
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-############################ Rainfall Trends
-############################ Rainfall Trends
-############################ Rainfall Trends
-############################ Rainfall Trends
-############################ Rainfall Trends
-############################ Rainfall Trends
-############################ Rainfall Trends
 
 import mystats
 
@@ -234,43 +198,50 @@ def grid_trend(x,t):
     
     # Getting the gradient of a linear interpolation
     idx = np.isfinite(x) & np.isfinite(t) #checking where the nans are for both
-    grad = np.polyfit(t[idx],x[idx],1)[0]
+    x = x[idx]
+    t = t[idx]
+    if len(t) < 5 or len(x) < 5:
+        return np.nan
+    grad = np.polyfit(t,x,1)[0]
     return grad
 
-def calculate_trend(percentile):
+def calculate_trend(data: xr.DataArray):
     
     # The axis number that year is
-    axis_num = percentile.get_axis_num('year')
+    axis_num = data.get_axis_num('year')
     
-    '''Applying trends along each grid cell'''
-    percentile_trend_meta = np.apply_along_axis(grid_trend,axis_num, percentile.values, 
-                                                t = percentile.year.values)
+    # Applying trends along each grid cell
+    percentile_trend_meta = np.apply_along_axis(grid_trend, axis_num, data.values, 
+                                                t = data.year.values)
+    # Adding back to xarray data array.
+    trend = xr.zeros_like(data.isel(year=0).drop('year').squeeze(), dtype=np.float64)
+    trend += percentile_trend_meta
 
-    '''Turning into an xarray dataset'''
-    # Added in logic so that now data with or without phase vlaues 
-    # can be passed in. This works by creating dict with lat and lon.
-    
-    # List of the coordinates from the array itself
-    coord_list = ['lat','lon']
-    
-    # The values to be used for each coordinates.
-    coord_dict = {'lat':percentile.lat,'lon':percentile.lon}
-      
-    # If phase is also in the coord_list then we have to add this to the coord dict.
-    # The reorder so that pahse is the first element in the dict.
-#     print(list(percentile))/
-    if 'phase' in list(percentile.coords):
-        coord_dict['phase'] = percentile.phase.values
-        coord_dict = {k:coord_dict[k] for k in ['phase','lat','lon']}
-        # Adding phase too first element of coord list. 
-        coord_list = ['phase'] + coord_list
-    
-#     print('\n')
-#     print(coord_list)#, percentile_trend_meta.values.shape, coord_dict, sep = '\n')
-    
-    trend  = xr.Dataset({'trend':(coord_list, percentile_trend_meta)},
-                        coord_dict)
     return trend
+
+# +
+#     '''Turning into an xarray dataset'''
+#     # Added in logic so that now data with or without phase vlaues 
+#     # can be passed in. This works by creating dict with lat and lon.
+    
+#     # List of the coordinates from the array itself
+#     coord_list = ['lat','lon']
+    
+#     # The values to be used for each coordinates.
+#     coord_dict = {'lat':percentile.lat,'lon':percentile.lon}
+      
+#     # If phase is also in the coord_list then we have to add this to the coord dict.
+#     # The reorder so that pahse is the first element in the dict.
+# #     print(list(percentile))/
+#     if 'phase' in list(percentile.coords):
+#         coord_dict['phase'] = percentile.phase.values
+#         coord_dict = {k:coord_dict[k] for k in ['phase','lat','lon']}
+#         # Adding phase too first element of coord list. 
+#         coord_list = ['phase'] + coord_list
+        
+#     trend  = xr.Dataset({'trend':(coord_list, percentile_trend_meta)},
+#                         coord_dict)
+# -
 
 def convert_to_percent_per_decade(percentile, trend):
     
@@ -311,22 +282,63 @@ def significant_trend_calc(data, pvals):
 
     return sig
 
+
+normalise_mapping = {'phase': count_in_rmm_phase, 'subphase': count_in_rmm_subphase}
+
+
+def normalise_trend(data: xr.Dataset, normalise:str) -> xr.Dataset:
+    import load_dataset as load
+    rmm = load.load_rmm()
+    rmm = wet_season_year(rmm)
+    
+    normalise_func = normalise_mapping[normalise]
+    phase_count = normalise_func(rmm)
+
+#     if normlise_meethod == 'phase': phase_count = count_in_rmm_phase(rmm)
+#     elif normlise_meethod == 'subphase': phase_count = count_in_rmm_subphase(rmm)
+
+    # This should be year here. However, it was changed.
+    if 'year' not in list(phase_count.dims):
+        print('renaming time to year.')
+        phase_count = phase_count.rename({'time':'year'})
+        phase_count['year'] = phase_count.year.dt.year.values
+
+    data_yearly = data.where(data.year.isin(phase_count.year.values), drop=True)
+    phase_count = phase_count.where(phase_count.year.isin(data.year.values), drop=True)
+
+    # Normlaising by the number of days in each mjo phase or category. 
+    data_normalised = (data_yearly/phase_count.number)
+    
+    return data_normalised
+    
+
 def return_alltrendinfo_custom(data, normalise = 0):
     import load_dataset as load
+    
+    if isinstance(normalise, str):
+        data = normalise_trend(data, normalise=normalise)
+#         rmm = load.load_rmm()
+#         rmm = wet_season_year(rmm)
 
-    if normalise == 'phase':
-        rmm = load.load_rmm()
-        rmm = wet_season_year(rmm)
+#         if normalise == 'phase': phase_count = count_in_rmm_phase(rmm)
+#         elif normalise == 'subphase': phase_count = count_in_rmm_subphase(rmm)
 
-        phase_count = count_in_rmm_phase(rmm)
-        data = (data/phase_count.number)
+#         # This should be year here. However, it was changed.
+#         if 'year' not in list(phase_count.dims):
+#             print('renaming time to year.')
+#             phase_count = phase_count.rename({'time':'year'})
+#             phase_count['year'] = phase_count.year.dt.year.values
+            
+#         data = data.where(data.year.isin(phase_count.year.values), drop=True)
+#         phase_count = phase_count.where(phase_count.year.isin(data.year.values), drop=True)
         
-    elif normalise == 'subphase':
-        rmm = load.load_rmm()
-        rmm = wet_season_year(rmm)
-        subphase_count = count_in_rmm_subphase(rmm)
+#         # Normlaising by the number of days in each mjo phase or category. 
+#         data = (data/phase_count.number)
 
-        data = (data/subphase_count.number)
+    
+    print('data')
+    print(data)
+
 
     print('calculating trend', end = '')
     # Calculates the trend

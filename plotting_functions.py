@@ -53,9 +53,9 @@ def colorbar_creater(vmax, step, cmap = 'RdBu', vmin = '', add_white = 0, extend
     if extender: # Chopping of some colors that are to dark to see the stippling
         custom_cmap = custom_cmap[extender:-extender] # CLipping the ends of either side
 #         custom_cmap = custom_cmap[0:-extender]
-        
+
 #         custom_cmap[0] = [1,1,1,1] # first element is white
-    
+
     # This will add a white section to the middle of the color bar. This is useful is small values 
     # need not be shown.
     if add_white:
@@ -174,8 +174,8 @@ def map_plot_with_stippling_and_NWASquare(data, ax, cmap, levels, square = 0, st
         
         # Plot is return for the colorbar.
         return plot
-    
-    
+
+
 def map_plot_with_no_controurf_NWASquare(data, ax, cmap, levels, square = 0,
                             lat_lon = 1, ptype = '',
                            title = ''):
@@ -225,15 +225,16 @@ def map_plot_with_no_controurf_NWASquare(data, ax, cmap, levels, square = 0,
         # Plot is return for the colorbar.
         return plot
 
-def create_colorbar(plot, cax, levels, ticks = '', cbar_title = '', cbar_titleSize = 12, xtickSize = 12, rotation = 45,
-                   orientation = 'horizontal', cut_ticks = 1):
+def create_colorbar(plot, cax, levels, ticks = '', cbar_title = '', cbar_titleSize = 12, xtickSize = 15, rotation = 45,
+                   orientation = 'horizontal', cut_ticks = 1,labelpad=30, title_rotation=0,
+                   shrink=1):#, title_pad=15):
     # DESCRIPTIN
     # plot: the plot that th cbar is refering to.
     # caxes: the colorbar axes.
     # levels: the levels on the plot
 #     mpl.rcParams['text.usetex'] = False
     # CODE
-    cbar = plt.colorbar(plot, cax = cax, orientation = orientation )#,norm = norm
+    cbar = plt.colorbar(plot, cax = cax, orientation = orientation, shrink=shrink)#,norm = norm
     cbar.set_ticks(levels[::cut_ticks])
 
     # Tick label control
@@ -245,7 +246,7 @@ def create_colorbar(plot, cax, levels, ticks = '', cbar_title = '', cbar_titleSi
     # Orientation control
     if orientation == 'horizontal':
         cbar.ax.set_xticklabels(tick_labels, fontsize = xtickSize, rotation = rotation)
-        cbar.ax.set_title(cbar_title, size = cbar_titleSize);
+        cbar.ax.set_title(cbar_title, size = cbar_titleSize)
     else:
-        cbar.ax.set_yticklabels(tick_labels, fontsize = xtickSize, rotation = rotation)
-        cbar.ax.set_ylabel(cbar_title, size = cbar_titleSize)
+        cbar.ax.set_yticklabels(tick_labels, fontsize = xtickSize, rotation = rotation), #labelpad=title_pad)
+        cbar.ax.set_ylabel(cbar_title, size = cbar_titleSize, rotation=title_rotation, labelpad = labelpad)
