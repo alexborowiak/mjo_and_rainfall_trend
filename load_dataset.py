@@ -32,8 +32,6 @@ def load_awap():
 
     AWAP = AWAP.where(mask.mask == 1)
 
-    
-
     #Rainday > 1mm
     AWAP = AWAP.where(AWAP.precip >= 1, drop = True) 
      # This are unphysical
@@ -57,7 +55,6 @@ def load_rmm():
     import io
 
     url = 'http://www.bom.gov.au/climate/mjo/graphics/rmm.74toRealtime.txt'
-#     user_agent = 'Mozilla/5.0 (X11; Linux x86_64; rv:68.0) Gecko/20100101 Firefox/68.0'
     user_agent = 'Mozilla/5.0 (X11; Linux x86_64; rv:78.0) Gecko/20100101 Firefox/78.0'
     headers={'User-Agent':user_agent}
     request=urllib.request.Request(url,None,headers)
