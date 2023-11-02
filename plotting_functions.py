@@ -22,6 +22,9 @@ from miscellaneous import apply_masks
 import calculation_functions
 import mystats
 
+BASE_CMAP_KWARGS = dict(add_white=True, clip_ends=1)
+
+
 
 def create_levels(vmax:float, vmin:float=None, step:float=1)->np.ndarray:
     '''
@@ -80,6 +83,7 @@ def create_discrete_cmap(cmap, number_divisions:int=None, levels=None, vmax=None
         
         # This must also be set to white. Not quite sure of the reasoning behind this. 
         color_array[int(lower_mid) - 1] = white
+    
 
     cmap = mpl.colors.ListedColormap(color_array)
     
@@ -189,13 +193,13 @@ def plot_stippled_data(sub_sig, ax, stiple_reduction=1, sig_size:float=constants
         size = np.transpose(size)
         size[::2] = 0
         size = np.transpose(size)
-    ax.scatter(X,Y, s=size * sig_size, color='grey', alpha=1)
+    ax.scatter(X,Y, s=size * sig_size, color='k', alpha=0.8)
 
 
 
-def nwa_map_plot(data: xr.DataArray, ax, cmap, levels: np.ndarray, stip_data: xr.DataArray = None, stip_reduce:int = 0, 
-                            sig_size:float=constants.sig_size, sig_alpha:float = 0.5, stiple_reduction=None,
-                           title:str = '', norm=None, add_colorbar:bool=False, debug=False):
+def nwa_map_plot(data:xr.DataArray, ax, cmap, levels: np.ndarray, stip_data: xr.DataArray = None, stip_reduce:int=0, 
+                            sig_size:float=constants.sig_size, stiple_reduction:bool=True,
+                           title:str ='' , norm=None, add_colorbar:bool=False, debug=False):
         '''
         data: Xarray data array with lat and lon coords only.
         ax: the axis to be plotted on.
@@ -205,7 +209,6 @@ def nwa_map_plot(data: xr.DataArray, ax, cmap, levels: np.ndarray, stip_data: xr
         stip_data: data set for stippling showing significance. Same format as data.
         stip_reduce: reduces the amount of stippling.
         sig_size: the size of significant points.
-        sig_alpha: the alpha value of significant points. 
         '''
 
         # Creating a grid using the lat and lon points.
@@ -218,7 +221,7 @@ def nwa_map_plot(data: xr.DataArray, ax, cmap, levels: np.ndarray, stip_data: xr
 
         if isinstance(stip_data, xr.DataArray): plot_stippled_data(apply_masks(stip_data), ax,
                                                                    stiple_reduction=stiple_reduction,
-                                                                  sig_size=sig_size)
+                                                                   sig_size=sig_size)
 
         format_lat_lon(ax)
         ax.set_title(title, size=constants.title_size)
@@ -240,14 +243,19 @@ def format_cbar_tick_string(levels, round_level, tick_symbol):
     if isinstance(tick_symbol, str): ticks = np.core.defchararray.add(ticks, np.tile(tick_symbol, len(ticks)))
         
     return ticks
-      
+
+
 # Previosly trend_plot_combined_better
 def datavars_as_col_plot(data:xr.DataArray, row_varialbe:str, stip_data=None, vmax=40, vmin=None, step=10, 
                          vmax2=None, vmin2=None, step2=None, hspace=0.25, 
                          sig_size:float=constants.sig_size, stiple_reduction=None, colorbar_title=None,
-                         colorbar_title2=None, col_titles=None, 
-                         cmap='BrBG', tick_symbol='%', round_level=0,):
-                
+                         colorbar_title2=None, col_titles=None, cmap1_kwargs=dict(), cmap2_kwargs=dict(),
+                         cmap='BrBG', tick_symbol='%', round_level=0):
+    
+    # The second list always takes priority when keys are repeated
+    cmap1_kwargs = {**BASE_CMAP_KWARGS, **cmap1_kwargs}
+    cmap2_kwargs = {**BASE_CMAP_KWARGS, **cmap2_kwargs}
+    
     row_values = data[row_varialbe].values
     data_vars = list(data.data_vars)
     
@@ -257,11 +265,12 @@ def datavars_as_col_plot(data:xr.DataArray, row_varialbe:str, stip_data=None, vm
     fig, gs = fig_formatter(height_ratios=[0.2] + num_rows * [1], width_ratios=[1, 1], hspace=hspace, wspace=.1)
     
     levels = create_levels(vmax, vmin, step)
-    
     # Note: will have to sort something out if adding a thrid colum with third unique colorbar
     levels2 = create_levels(vmax2, vmin2, step2) if vmax2 is not None else levels
-        
+    cmap1 = create_discrete_cmap(cmap, levels=levels, **cmap1_kwargs)
+    cmap2 = create_discrete_cmap(cmap, levels=levels2, **cmap2_kwargs) if vmax2 is not None else cmap1
     level_list = [levels, levels2]
+    cmap_list = [cmap1, cmap2]
 
     data = calculation_functions.max_filter(data, np.max([np.max(levels), np.max(levels2)]))
 
@@ -275,7 +284,7 @@ def datavars_as_col_plot(data:xr.DataArray, row_varialbe:str, stip_data=None, vm
             ax = fig.add_subplot(gs[row+1, column], projection=ccrs.PlateCarree())
             plot = nwa_map_plot(
                 calculation_functions.max_filter(data[index].sel(phase=phase), np.max(level_list[column])), 
-                ax, stip_data=stip_data_sel, sig_size=sig_size, cmap=cmap, levels=level_list[column])
+                ax, stip_data=stip_data_sel, sig_size=sig_size, cmap=cmap_list[column], levels=level_list[column])
             add_figure_label(ax, f'{chr(97+plot_num)})')
             plot_num += 1
             
@@ -309,8 +318,8 @@ def datavars_as_col_plot(data:xr.DataArray, row_varialbe:str, stip_data=None, vm
 
 
 def all_phase_trend_plots(data: xr.DataArray, stip_data = None,
-                        vmax=40, step=10, sig_size:float=constants.sig_size, vmin=None,  title='', colorbar_title='', 
-                        tick_symbol='%', round_level=0, cmap = 'BrBG', stiple_reduction=None,
+                        vmax=40, step=10, sig_size:float=constants.sig_size, vmin=None, title='', colorbar_title='', 
+                        tick_symbol='%', round_level=0, cmap = 'BrBG', stiple_reduction=None, cmap_kwargs=dict(),
                          return_all_fig_comps:bool=False):
             
     phases = data.phase.values
@@ -331,6 +340,8 @@ def all_phase_trend_plots(data: xr.DataArray, stip_data = None,
     fig, gs = fig_formatter(height_ratios= [0.2]+num_rows*[1], width_ratios=[1]*num_cols, hspace=hspace, wspace=wspace)
     
     levels = create_levels(vmax, vmin, step)
+    cmap_kwargs = {**BASE_CMAP_KWARGS, **cmap_kwargs}
+    cmap = create_discrete_cmap(cmap, levels=levels, **cmap_kwargs)
     data = apply_masks(data)
 
     row = 1 # Starting on the first row, as colorbar goes on the zero row
@@ -433,7 +444,7 @@ def phase_bar_plot(data: xr.DataArray, ylabel:str=None, annotate_position_dict:d
 
     ax.set_xlabel('MJO RMM Phase', size=constants.cbar_title_size)
     ax.set_ylabel(ylabel, size=constants.cbar_title_size,
-                 rotation=0, labelpad=75)
+                 rotation=0, labelpad=75*font_scale)
 
     format_axis(ax)
     ax.axhline([0], color='k', linestyle='--', zorder=-1000, alpha=0.4, linewidth=0.9)

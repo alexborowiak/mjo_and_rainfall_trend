@@ -11,6 +11,7 @@ from constants import MJO_DATA_PATH
 
 def load_mask():
     # the andrew mask for the gibson desert
+    
     path = os.path.join(MJO_DATA_PATH, 'precip_calib_0.25_maskforCAus.nc')
     mask = xr.open_dataset(path)
     mask = mask.rename({'longitude':'lon'})
