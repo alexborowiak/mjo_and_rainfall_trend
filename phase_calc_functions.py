@@ -1,23 +1,27 @@
+import sys
+import os
+import datetime as dt
+from functools import partial
+from typing import List
+
 import xarray as xr
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 import dask.array
+
+import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 import matplotlib.colors as colors
-import datetime as dt
 from matplotlib.colors import BoundaryNorm
-import sys
+import matplotlib.gridspec as gridspec
+
 import warnings
 warnings.filterwarnings('ignore')
+
+# Custom Module Imports
+sys.path.append(os.path.join(os.getcwd(), 'Documents', 'mjo_and_rainfall_trend'))
 import mystats
-from functools import partial
-
-import matplotlib.gridspec as gridspec
-from typing import List
-
 import load_dataset as load
-
 import calculation_functions
 
 enhanced_phases = [5,6]
@@ -25,10 +29,14 @@ suppressed_phases = [1,2,3]
 transition_phases = [4,7,8]
 
 
-def wet_season_year(data):
+def wet_season_year(data: xr.DataArray):
     '''
-    This is the start of the wet_season, wet want to move it to the next year so that the start of the
-    wet season and the end are both in the one year. This makes it easier for calculatins later on 
+    Extracts a single wet season from the input data by shifting the end months to the previous year.
+
+    Parameters:
+        data (xr.DataArray): The input data.
+    Returns:
+        xr.DataArray: A single-year representation of the wet season.
     '''
     START_MONSOON_MONTHS = [12]
     END_MONSOON_MONTHS  = [1,2,3]
@@ -39,33 +47,47 @@ def wet_season_year(data):
     # The end of the monsoon must be moved back to the previous year.
     data_end['time'] = data_end.time - pd.to_timedelta('365day')
     
-    total = data_end.combine_first(data_start) # All in one year now :)
+    combined_ds = data_end.combine_first(data_start) # All in one year now :)
     
-    return total
+    return combined_ds
 
-def split_into_1to8(datafile, rmm_xr):
+def split_into_1to8(ds:xr.Dataset, rmm_xr: xr.Dataset):
+    '''
+    Split a dataset into 8 active phases based on the Real-time Multivariate Madden-Julian Oscillation (RMM) data,
+    and include an additional 0 phase for inactive periods.
+
+    Parameters:
+        ds (xr.Dataset): The input dataset to be split into phases.
+        rmm_xr (xr.Dataset): The RMM dataset with phase and amplitude information.
+
+    Returns:
+        xr.Dataset: Data split into 9 phases (8 active phases and 1 inactive phase).
+
+    Note: This function can be simplified using xarray's coordinate assignment:
+    ds['phase'] = ('time', rmm_xr.phase.values)
+    ds['amplitude'] = ('time', rmm_xr.amplitude.values)
+    '''
     
+    # Identify dates when RMM amplitude is less than 1 (inactive phase)
     rmm_inact_dates = rmm_xr.where(rmm_xr.amplitude < 1, drop = True).time.values
-    datafile_inact = datafile.where(datafile.time.isin(rmm_inact_dates), drop = True)
+    ds_inact = ds.where(ds.time.isin(rmm_inact_dates), drop = True)
 
 
-    single_phase = [] # Storage for later concatinating in xarray
-    rmm_act = rmm_xr.where(rmm_xr.amplitude >= 1, drop = True) # Only acitve when RMM > 1
-    phases = np.arange(1,9) # 8 phases we are looping through
+    single_phase_list = [] # Storage for later concatinating in xarray
+    rmm_act = rmm_xr.where(rmm_xr.amplitude >= 1, drop = True) # Only active when RMM > 1
+    phases = np.arange(1,9) # 8 phases to loop through
     for phase in phases:
-        rmm_single_dates = rmm_act.where(rmm_act.phase == phase, drop = True).time.values # The dates of this phase
-        datafile_single = datafile.where(datafile.time.isin(rmm_single_dates), drop = True) # The datafile data in this phase
-        single_phase.append(datafile_single) # Appending
+        rmm_single_dates = rmm_act.where(rmm_act.phase==phase, drop=True).time.values # The dates of this phase
+        ds_single = ds.where(ds.time.isin(rmm_single_dates), drop=True) # The ds_single data in this phase
+        single_phase_list.append(ds_single)
 
-    # Update - phase are now integer, with phase 0 being the inactivate phase
+    # Phase 0 is inactivate phase
     phases = np.append(phases, 0)
     
-    # The inactive phase also needs to be included
-    single_phase.append(datafile_inact) 
+    # single_phase_list inactive phase also needs to be included
+    single_phase_list.append(ds_inact) 
 
-    datafile_RMM_split = xr.concat(single_phase, pd.Index(phases, name = 'phase'))
-
-    return  datafile_RMM_split
+    return  xr.concat(single_phase_list, pd.Index(phases, name='phase'))
 
 
 
@@ -136,9 +158,7 @@ def count_in_rmm_subphase(rmm, enhanced_phase_override:List[str]=None):
     for phase_name, phase_nums in phase_dict.items():
         rmm_single_phase = rmm_act.where(rmm_act.phase.isin(np.array(phase_nums).astype(float)))
         resample_phase_values = rmm_single_phase.phase.resample(time='Y').count(dim='time')
-        #calculation_functions.monsoon_resample(rmm_single_phase, method='count')
-        #
-                                         
+                           
         to_combine[phase_name] = resample_phase_values.values
 
     rmm_combined_phases = xr.Dataset({'number':(('phase','time'), list(to_combine.values()))},
