@@ -7,7 +7,8 @@ import os
 warnings.filterwarnings('ignore')
 from constants import MJO_DATA_PATH
 
-
+import urllib
+import io
 
 def load_mask():
     # the andrew mask for the gibson desert
@@ -48,29 +49,50 @@ def load_awap():
     return AWAP
 
 
-   
-
 def load_rmm():
-    
-    import urllib
-    import io
+    """
+    Load the Real-time Multivariate MJO (RMM) data from the Bureau of Meteorology (BoM) website.
 
+    Returns:
+    - rmm_xr (xarray.Dataset): A dataset containing RMM data (RMM1, RMM2, phase, amplitude) with time as the index.
+    """
+    # Define the URL for the RMM data file on the BoM website
     url = 'http://www.bom.gov.au/climate/mjo/graphics/rmm.74toRealtime.txt'
+    
+    # Define a user agent to mimic a web browser
     user_agent = 'Mozilla/5.0 (X11; Linux x86_64; rv:78.0) Gecko/20100101 Firefox/78.0'
-    headers={'User-Agent':user_agent}
-    request=urllib.request.Request(url,None,headers)
+    
+    # Set custom headers with the user agent
+    headers = {'User-Agent': user_agent}
+    
+    # Create an HTTP request with the specified URL and headers
+    request = urllib.request.Request(url, None, headers)
+    
+    # Send the HTTP request and open the response
     response = urllib.request.urlopen(request)
+    
+    # Read the response data
     data = response.read()
+    
+    # Convert the binary data to a text-based CSV format
     csv = io.StringIO(data.decode('utf-8'))
 
+    # Read the CSV data into a Pandas DataFrame
     rmm_df = pd.read_csv(csv, sep=r'\s+', header=None, skiprows=2,
-        usecols=[0,1,2,3,4,5,6,7], names=['year', 'month', 'day','RMM1','RMM2', 'phase', 'amplitude', 'origin'])
-    index = pd.to_datetime(rmm_df.loc[:,['year','month','day']])
+                        usecols=[0, 1, 2, 3, 4, 5, 6, 7],
+                        names=['year', 'month', 'day', 'RMM1', 'RMM2', 'phase', 'amplitude', 'origin'])
+
+    # Create a datetime index from the year, month, and day columns
+    index = pd.to_datetime(rmm_df.loc[:, ['year', 'month', 'day']])
     rmm_df.index = index
 
-    rmm_xr = rmm_df.loc[:,['RMM1','RMM2', 'phase','amplitude']].to_xarray().rename({'index':'time'})
-    
+    # Select the relevant columns and convert them to an xarray dataset
+    rmm_xr = rmm_df.loc[:, ['RMM1', 'RMM2', 'phase', 'amplitude']].to_xarray().rename({'index': 'time'})
+
     return rmm_xr
+
+
+
 
     
 def load_ot_rmm(fname='mjoindex_IHR_20CRV2c.nc'):

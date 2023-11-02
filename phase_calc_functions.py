@@ -236,11 +236,11 @@ def calculate_pvals(da: xr.DataArray):
 
 
 def significant_trend_calc(data: xr.DataArray, pvals: xr.Dataset) -> xr.DataArray:
-    sig_da = data.where(np.logical_and(pvals.pvals >= 0 ,pvals.pvals <= 0.1))
+    sig_da = data.where(np.logical_and(pvals.pvals >= 0 ,pvals.pvals <= 0.05))
 
     return sig_da
 
-def values_in_bounds(da:xr.DataArray, pval_da:xr.DataArray=None, lower=0, upper=0.1):   
+def values_in_bounds(da:xr.DataArray, pval_da:xr.DataArray=None, lower=0, upper=0.05):   
     ''' This is a newer version of significant_trend_calc that uses two data arrays
     instead of using datasets. This is better as it doesn't required the pval_da
     to have a names data var.'''
